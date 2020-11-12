@@ -29,7 +29,8 @@
     (gp:draw-rectangle results 0 0
                        (/ capi:%width% 2)
                        (/ capi:%height% 2)
-                       :filled :red)))
+                       :filled :red)
+    ))
 
 
 (defun display-results (results x y width height)
