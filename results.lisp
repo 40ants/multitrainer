@@ -19,6 +19,18 @@
                        :foreground :black)))
 
 
+(defclass highligher (capi:drawn-pinboard-object)
+  ()
+  (:default-initargs
+   :display-callback 'draw-highligher))
+
+
+(defun draw-highligher (pane self x y width height)
+  (gp:draw-rectangle pane x y width height
+                     :foreground :red
+                     :thickness 2))
+
+
 (defclass picture (capi:drawn-pinboard-object)
   ((image :initform nil)
    (path :initform nil
@@ -55,8 +67,20 @@
 (defclass results (capi:pinboard-layout)
   ((picture :accessor results-picture
           :initform nil)
-   (shims :initform (make-array '(10 10) :initial-element nil)
-          :reader shims))
+   (shims :initform (make-array '(9 9) :initial-element nil)
+          :reader shims)
+   (shim-size :initform nil
+              :accessor shim-size)
+   (shim-gap :initform nil
+             :accessor shim-gap)
+   (picture-x :initform nil
+              :accessor picture-x)
+   (picture-y :initform nil
+              :accessor picture-y)
+   (column-highlighter :initform nil)
+   (row-highlighter :initform nil)
+   (left :initform nil)
+   (right :initform nil))
   (:default-initargs
    :visible-min-width 700
    :visible-min-height 700
@@ -124,17 +148,34 @@
                                       :font (multiplication/font:make-small-font)
                                       :y (+ v-num-y (* number (+ shim-size
                                                                  shim-gap)))
-                                      :x v-num-x))))
-    (setf (capi:layout-description pane)
-          (append
-;;;            (list (make-instance 'multiplication/helping-grid:helping-grid
-;;;                                 :width 700
-;;;                                 :height 700))
-           (list picture)
-                  horizontal-numbers
-                  vertical-numbers
-                  shims)
-          )))
+                                      :x v-num-x)))
+         
+         )
+    (with-slots (column-highlighter row-highlighter)
+        pane
+      (setf (shim-size pane) shim-size
+            (shim-gap pane) shim-gap
+            (picture-x pane) picture-x
+            (picture-y pane) picture-y)
+      (setf column-highlighter (make-instance 'highligher
+                                              :x picture-x :y picture-y
+                                              :width shim-size
+                                              :height picture-height))
+      (setf row-highlighter (make-instance 'highligher
+                                           :x picture-x :y picture-y
+                                           :width picture-width
+                                           :height shim-size))
+      (setf (capi:layout-description pane)
+            (append
+             ;;;            (list (make-instance 'multiplication/helping-grid:helping-grid
+             ;;;                                 :width 700
+             ;;;                                 :height 700))
+             (list picture)
+             horizontal-numbers
+             vertical-numbers
+             shims
+             (list column-highlighter
+                   row-highlighter))))))
 
 
 ;;; (defparameter *display-called* 0)
@@ -157,6 +198,35 @@
           (= answer
              (* left right)))
     (gp:invalidate-rectangle pane)))
+
+
+(defun set-question (pane new-left new-right)
+  (with-slots (left right column-highlighter row-highlighter)
+      pane
+    (setf left new-left
+          right new-right)
+    (multiple-value-bind (x y)
+        (capi:static-layout-child-position column-highlighter)
+      (declare (ignorable x))
+      (setf (capi:static-layout-child-position column-highlighter)
+            (values
+             (ceiling
+                   (+ (picture-x pane)
+                      (* (+ (shim-size pane)
+                            (shim-gap pane))
+                         (1- left))))
+                  y)))
+    (multiple-value-bind (x y)
+        (capi:static-layout-child-position row-highlighter)
+      (declare (ignorable y))
+      (setf (capi:static-layout-child-position row-highlighter)
+            (values
+             x
+             (ceiling
+                   (+ (picture-y pane)
+                      (* (+ (shim-size pane)
+                            (shim-gap pane))
+                         (1- right)))))))))
 
 
 ;;; (defun update-results (results left right answer)

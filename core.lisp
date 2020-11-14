@@ -79,6 +79,10 @@
 (defun show-next-question (app)
   (setf *left* (1+ (random 9))
         *right* (1+ (random 9)))
+
+  (multiplication/results::set-question
+   (results-pane app)
+   *left* *right*)
  
   (capi:apply-in-pane-process
      (question app)
