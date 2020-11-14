@@ -1,4 +1,4 @@
-s(defpackage multiplication/results
+(defpackage multiplication/results
   (:use :cl)
   (:import-from #:multiplication/helping-grid))
 (in-package multiplication/results)
@@ -161,7 +161,13 @@ s(defpackage multiplication/results
                                       :font (multiplication/font:make-small-font)
                                       :y (+ v-num-y (* number (+ shim-size
                                                                  shim-gap)))
-                                      :x v-num-x))))
+                                      :x v-num-x)))
+         (helping-grid
+          (make-instance 'multiplication/helping-grid:helping-grid
+                         :width 700
+                         :height 700)))
+    (declare (ignorable helping-grid))
+    
     (with-slots (column-highlighter row-highlighter)
         pane
       (setf (shim-size pane) shim-size
@@ -184,9 +190,7 @@ s(defpackage multiplication/results
                                            :height shim-size))
       (setf (capi:layout-description pane)
             (append
-             ;;;            (list (make-instance 'multiplication/helping-grid:helping-grid
-             ;;;                                 :width 700
-             ;;;                                 :height 700))
+;;             (list helping-grid)
              (list picture)
              horizontal-numbers
              vertical-numbers
@@ -253,23 +257,95 @@ s(defpackage multiplication/results
                                      new-left
                                      new-right)))))))
 
+(defparameter *trans* nil)
+(defvar *timer* (mp:make-timer 'process-transitions))
+(defparameter *timer-interval* 0.001)
+
+
+(defun change-x (obj to-x &optional (duration 2.0))
+  (let* ((started-at (get-internal-real-time))
+         (until (+ started-at
+                   (* duration
+                      internal-time-units-per-second))))
+    (multiple-value-bind (orig-x orig-y)
+        (capi:static-layout-child-position obj)
+      (declare (ignorable orig-y))
+      
+      (lambda ()
+        (let* ((now (get-internal-real-time))
+               (new-value (+ orig-x
+                             (* (- to-x orig-x)
+                                (/ (- now started-at)
+                                   (- until started-at))))))
+            (list
+             obj
+             (cond
+              ((<= now until)
+               (setf (capi:static-layout-child-position obj)
+                     (values
+                      new-value
+                      orig-y))
+               nil)
+              (t (setf (capi:static-layout-child-position obj)
+                       (values
+                        to-x
+                        orig-y))
+                 ;; Signal to remove transition
+                 ;; from the queue
+                 t))))))))
+  
+
+(defun process-transitions ()
+  (loop with to-remove = nil
+        for transition in *trans*
+        for (obj remove-p) = (funcall transition)
+        if obj
+        do (gp:invalidate-rectangle (capi:element-parent obj))
+        if remove-p
+        do (push transition to-remove)
+        finally (setf *trans*
+                      (remove-if (lambda (tr)
+                                   (member tr to-remove))
+                                 *trans*)))
+  (mp:schedule-timer-relative *timer*
+                              *timer-interval*)))
+
+(defun start-timer ()
+  (mp:schedule-timer-relative *timer*
+                              *timer-interval*))
+
 
 (defun set-question (pane new-left new-right)
   (with-slots (left right column-highlighter row-highlighter)
       pane
     (setf left new-left
           right new-right)
-    (multiple-value-bind (x y)
-        (capi:static-layout-child-position column-highlighter)
-      (declare (ignorable x))
-      (setf (capi:static-layout-child-position column-highlighter)
-            (values
-             (+ (picture-x pane)
-                (truncate (shim-gap pane) 2)
-                (* (+ (shim-size pane)
-                      (shim-gap pane))
-                   (1- left)))
-             y)))
+
+
+    (push (change-x column-highlighter
+                    (+ (picture-x pane)
+                       (truncate (shim-gap pane) 2)
+                       (* (+ (shim-size pane)
+                             (shim-gap pane))
+                          (1- left)))
+                    0.3
+                    )
+          *trans*)
+    
+;;;     (multiple-value-bind (x y)
+;;;         (capi:static-layout-child-position column-highlighter)
+;;;       (declare (ignorable x))
+
+
+;;;       (setf (capi:static-layout-child-position column-highlighter)
+;;;             (values
+;;;              (+ (picture-x pane)
+;;;                 (truncate (shim-gap pane) 2)
+;;;                 (* (+ (shim-size pane)
+;;;                       (shim-gap pane))
+;;;                    (1- left)))
+;;;              y)))
+    
     (multiple-value-bind (x y)
         (capi:static-layout-child-position row-highlighter)
       (declare (ignorable y))
