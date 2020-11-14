@@ -1,5 +1,6 @@
 (defpackage multiplication/results
-  (:use :cl))
+  (:use :cl)
+  (:import-from #:multiplication/helping-grid))
 (in-package multiplication/results)
 
 
@@ -9,8 +10,7 @@
            :accessor opened))
   (:default-initargs
    :display-callback 'draw-shim
-   :visible-min-width 40 :visible-min-height 40))
-
+   :visible-min-width 40 :visible-min-height 40)
 
 (defun draw-shim (pane self x y width height)
   (unless (opened self)
@@ -73,8 +73,8 @@
 (defmethod initialize-instance :after ((pane results) &key &allow-other-keys)
   (let* ((picture-width 600)
          (picture-height 600)
-         (picture-x 90)
-         (picture-y 90)
+         (picture-x 70)
+         (picture-y 70)
          (picture  (make-instance 'picture
                                   :path (choose-random-picture)
                                   :x picture-x
@@ -94,44 +94,47 @@
                                                        (* row (+ shim-size shim-gap)))
                                                  :width shim-size
                                                  :height shim-size
-                                                 :opened nil
-;;;                                                  (when (< (random 100)
-;;;                                                                   30)
-;;;                                                            t)
+                                                 :opened
+                                                 (when (< (random 100)
+                                                                  30)
+                                                           t)
                                                  )))
                         (setf (aref (shims pane) column row)
                               shim)
                         (collect shim))))))
-         (h-num-x (+ picture-x 0))
-         (h-num-y (- picture-y shim-size 40))
+         (h-num-x (+ picture-x 15))
+         (h-num-y (+ (- picture-y shim-size)
+                     5))
          (horizontal-numbers
           (loop for number below 9
                 collect(make-instance 'capi:title-pane
                                       :text (format nil "~A"
                                                     (1+ number))
-                                      :font (multiplication/font:make-big-font)
+                                      :font (multiplication/font:make-small-font)
                                       :x (+ h-num-x (* number (+ shim-size
                                                                  shim-gap)))
                                       :y h-num-y)))
-         (v-num-x (- picture-x shim-size))
-         (v-num-y (- picture-y 33))
+         (v-num-x (- picture-x 35))
+         (v-num-y picture-y)
          (vertical-numbers
           (loop for number below 9
                 collect(make-instance 'capi:title-pane
                                       :text (format nil "~A"
                                                     (1+ number))
-                                      :font (multiplication/font:make-big-font)
+                                      :font (multiplication/font:make-small-font)
                                       :y (+ v-num-y (* number (+ shim-size
                                                                  shim-gap)))
                                       :x v-num-x))))
     (setf (capi:layout-description pane)
-          (append (list picture)
+          (append
+;;;            (list (make-instance 'multiplication/helping-grid:helping-grid
+;;;                                 :width 700
+;;;                                 :height 700))
+           (list picture)
                   horizontal-numbers
                   vertical-numbers
                   shims)
-          )
-    )
-  )
+          )))
 
 
 ;;; (defparameter *display-called* 0)
