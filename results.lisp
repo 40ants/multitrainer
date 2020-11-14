@@ -178,18 +178,6 @@
                    row-highlighter))))))
 
 
-;;; (defparameter *display-called* 0)
-
-
-;;; (defun draw-results-grid (results)
-;;;   (capi:with-geometry results
-;;;     (gp:draw-rectangle results 0 0
-;;;                        (/ capi:%width% 2)
-;;;                        (/ capi:%height% 2)
-;;;                        :filled :red)
-;;;     ))
-
-
 (defun update-results (pane left right answer)
   (let ((shim (aref (shims pane)
                     (1- left)
@@ -210,49 +198,18 @@
       (declare (ignorable x))
       (setf (capi:static-layout-child-position column-highlighter)
             (values
-             (ceiling
-                   (+ (picture-x pane)
-                      (* (+ (shim-size pane)
-                            (shim-gap pane))
-                         (1- left))))
-                  y)))
+             (+ (picture-x pane)
+                (* (+ (shim-size pane)
+                      (shim-gap pane))
+                   (1- left)))
+             y)))
     (multiple-value-bind (x y)
         (capi:static-layout-child-position row-highlighter)
       (declare (ignorable y))
       (setf (capi:static-layout-child-position row-highlighter)
             (values
              x
-             (ceiling
-                   (+ (picture-y pane)
-                      (* (+ (shim-size pane)
-                            (shim-gap pane))
-                         (1- right)))))))))
-
-
-;;; (defun update-results (results left right answer)
-;;;   (unless (results-image results)
-;;;     (let* ((external-image
-;;;             (gp:read-external-image "images/pexels-pixabay-45201.jpg"))
-;;;            (image (gp:convert-external-image results external-image))
-;;;            (scaled
-;;;             (gp:make-scaled-sub-image results image 500 500)
-;;;             )
-;;;            )
-;;;       (setf (results-image results)
-;;;             scaled)
-;;;       (gp:invalidate-rectangle results)))
-;;;   
-;;; ;;;   (let* ((color (if (= (* left right)
-;;; ;;;                        answer)
-;;; ;;;                     :green
-;;; ;;;                   :red)))
-;;; ;;;     (format t "Setting color ~A for ~A * ~A = ~A~%"
-;;; ;;;             color left right answer)
-;;; ;;;     (capi:apply-in-pane-process
-;;; ;;;      results
-;;; ;;;      #'(setf capi:simple-pane-background)
-;;; ;;;      color
-;;; ;;;      results)
-;;; ;;;     (show-next-question (find-app results)))
-
-;;;   )
+             (+ (picture-y pane)
+                (* (+ (shim-size pane)
+                      (shim-gap pane))
+                   (1- right))))))))
