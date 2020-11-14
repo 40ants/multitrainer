@@ -260,47 +260,81 @@
 (defparameter *trans* nil)
 (defvar *timer* (mp:make-timer 'process-transitions))
 (defparameter *timer-interval* 0.001)
+(defparameter *default-duration* 0.2)
 
 
-(defun change-x (obj to-x &optional (duration 2.0))
+(defun x-position (obj)
+  (nth-value 0
+             (capi:static-layout-child-position obj)))
+
+(defun (setf x-position) (new-x obj)
+  (setf (capi:static-layout-child-position obj)
+        (values
+         new-x
+         (y-position obj))))
+
+(defun y-position (obj)
+  (nth-value 1
+             (capi:static-layout-child-position obj)))
+
+
+(defun (setf y-position) (new-y obj)
+  (setf (capi:static-layout-child-position obj)
+        (values
+         (x-position obj)
+         new-y)))
+
+
+(defun make-transition (from-value to-value set-func &optional (duration *default-duration*))
   (let* ((started-at (get-internal-real-time))
          (until (+ started-at
                    (* duration
                       internal-time-units-per-second))))
-    (multiple-value-bind (orig-x orig-y)
-        (capi:static-layout-child-position obj)
-      (declare (ignorable orig-y))
-      
-      (lambda ()
-        (let* ((now (get-internal-real-time))
-               (new-value (+ orig-x
-                             (* (- to-x orig-x)
-                                (/ (- now started-at)
-                                   (- until started-at))))))
-            (list
-             obj
-             (cond
-              ((<= now until)
-               (setf (capi:static-layout-child-position obj)
-                     (values
-                      new-value
-                      orig-y))
-               nil)
-              (t (setf (capi:static-layout-child-position obj)
-                       (values
-                        to-x
-                        orig-y))
-                 ;; Signal to remove transition
-                 ;; from the queue
-                 t))))))))
-  
+    (lambda ()
+      (let* ((now (get-internal-real-time))
+             (new-value (+ from-value
+                           (* (- to-value from-value)
+                              (/ (- now started-at)
+                                 (- until started-at))))))
+        (cond
+         ((<= now until)
+          (funcall set-func new-value)
+          nil)
+         (t (funcall set-func to-value)
+            ;; Signal to remove transition
+            ;; from the queue
+            t))))))
+
+(defun change-x (obj new-x &optional (duration *default-duration*))
+  (make-transition (x-position obj)
+                   new-x
+                   (lambda (value)
+                     (setf (x-position obj)
+                           value)
+                     (gp:invalidate-rectangle
+                      (capi:element-parent obj)))
+                   duration))
+
+
+(defun change-y (obj new-y &optional (duration *default-duration*))
+  (make-transition (y-position obj)
+                   new-y
+                   (lambda (value)
+                     (setf (y-position obj)
+                           value)
+                     (gp:invalidate-rectangle
+                      (capi:element-parent obj)))
+                   duration))
+
+(defun start-transition (transition)
+  (push transition *trans*)
+  (start-timer))
+
 
 (defun process-transitions ()
   (loop with to-remove = nil
         for transition in *trans*
-        for (obj remove-p) = (funcall transition)
-        if obj
-        do (gp:invalidate-rectangle (capi:element-parent obj))
+        for remove-p = (funcall transition)
         if remove-p
         do (push transition to-remove)
         finally (setf *trans*
@@ -322,38 +356,19 @@
           right new-right)
 
 
-    (push (change-x column-highlighter
+    (start-transition
+     (change-x column-highlighter
                     (+ (picture-x pane)
                        (truncate (shim-gap pane) 2)
                        (* (+ (shim-size pane)
                              (shim-gap pane))
                           (1- left)))
-                    0.3
-                    )
-          *trans*)
-    
-;;;     (multiple-value-bind (x y)
-;;;         (capi:static-layout-child-position column-highlighter)
-;;;       (declare (ignorable x))
+                    0.3))
 
-
-;;;       (setf (capi:static-layout-child-position column-highlighter)
-;;;             (values
-;;;              (+ (picture-x pane)
-;;;                 (truncate (shim-gap pane) 2)
-;;;                 (* (+ (shim-size pane)
-;;;                       (shim-gap pane))
-;;;                    (1- left)))
-;;;              y)))
-    
-    (multiple-value-bind (x y)
-        (capi:static-layout-child-position row-highlighter)
-      (declare (ignorable y))
-      (setf (capi:static-layout-child-position row-highlighter)
-            (values
-             x
-             (+ (picture-y pane)
-                (truncate (shim-gap pane) 2)
-                (* (+ (shim-size pane)
-                      (shim-gap pane))
-                   (1- right))))))))
+    (start-transition
+     (change-y row-highlighter
+               (+ (picture-y pane)
+                  (truncate (shim-gap pane) 2)
+                  (* (+ (shim-size pane)
+                        (shim-gap pane))
+                     (1- right)))))))
