@@ -1,22 +1,32 @@
-(defpackage multiplication/results
+s(defpackage multiplication/results
   (:use :cl)
   (:import-from #:multiplication/helping-grid))
 (in-package multiplication/results)
 
 
 (defclass shim (capi:drawn-pinboard-object)
-  ((opened :initform t
-           :initarg :opened
-           :accessor opened))
+  ((probability :initform (random 1.0)
+                :initarg :probability
+                :accessor shim-probability))
   (:default-initargs
    :display-callback 'draw-shim
-   :visible-min-width 40 :visible-min-height 40)
+   :visible-min-width 40 :visible-min-height 40))
+
+(defmethod print-object ((shim shim) stream)
+  (print-unreadable-object (shim stream :type t)
+    (format stream "prob: ~A"
+            (shim-probability shim))))
+
+(defun get-color (shim)
+  (color:make-rgb 0.0
+                  0.0
+                  (shim-probability shim)))
 
 (defun draw-shim (pane self x y width height)
-  (unless (opened self)
+  (when (> (shim-probability self) 0.0)
     (gp:draw-rectangle pane x y width height
                        :filled t
-                       :foreground :black)))
+                       :foreground (get-color self)))))
 
 
 (defclass highligher (capi:drawn-pinboard-object)
@@ -28,7 +38,7 @@
 (defun draw-highligher (pane self x y width height)
   (gp:draw-rectangle pane x y width height
                      :foreground :red
-                     :thickness 2))
+                     :thickness 4))
 
 
 (defclass picture (capi:drawn-pinboard-object)
@@ -111,18 +121,21 @@
          (shims (uiop/utility:while-collecting (collect)
                   (dotimes (column 9)
                     (dotimes (row 9)
-                      (let ((shim (make-instance 'shim
-                                                 :x (+ picture-x
+                      (let* ((prob
+                              (+ 0.2
+                                 (* 0.9
+                                    (/ (expt (- 81 (* column row))
+                                             3)
+                                       (expt 81
+                                             3)))))
+                             (shim (make-instance 'shim
+                                                  :probability prob
+                                                  :x (+ picture-x
                                                        (* column (+ shim-size shim-gap)))
-                                                 :y (+ picture-y
-                                                       (* row (+ shim-size shim-gap)))
-                                                 :width shim-size
-                                                 :height shim-size
-                                                 :opened
-                                                 (when (< (random 100)
-                                                                  30)
-                                                           t)
-                                                 )))
+                                                  :y (+ picture-y
+                                                        (* row (+ shim-size shim-gap)))
+                                                  :width shim-size
+                                                  :height shim-size)))
                         (setf (aref (shims pane) column row)
                               shim)
                         (collect shim))))))
@@ -148,9 +161,7 @@
                                       :font (multiplication/font:make-small-font)
                                       :y (+ v-num-y (* number (+ shim-size
                                                                  shim-gap)))
-                                      :x v-num-x)))
-         
-         )
+                                      :x v-num-x))))
     (with-slots (column-highlighter row-highlighter)
         pane
       (setf (shim-size pane) shim-size
@@ -158,12 +169,18 @@
             (picture-x pane) picture-x
             (picture-y pane) picture-y)
       (setf column-highlighter (make-instance 'highligher
-                                              :x picture-x :y picture-y
+                                              :x picture-x
+                                              :y (- picture-y
+                                                    shim-size)
                                               :width shim-size
-                                              :height picture-height))
+                                              :height (+ picture-height
+                                                         shim-size)))
       (setf row-highlighter (make-instance 'highligher
-                                           :x picture-x :y picture-y
-                                           :width picture-width
+                                           :x (- picture-x
+                                                 shim-size)
+                                           :y picture-y
+                                           :width (+ picture-width
+                                                     shim-size)
                                            :height shim-size))
       (setf (capi:layout-description pane)
             (append
@@ -178,14 +195,63 @@
                    row-highlighter))))))
 
 
-(defun update-results (pane left right answer)
-  (let ((shim (aref (shims pane)
-                    (1- left)
-                    (1- right))))
-    (setf (opened shim)
-          (= answer
-             (* left right)))
-    (gp:invalidate-rectangle pane)))
+(defun give-answer (pane answer)
+  (flet ((change-prob (left right prob-increment)
+           (when (and (<= 1 left 9)
+                      (<= 1 right 9))
+             (let* ((shim (aref (shims pane)
+                                (1- left)
+                                (1- right)))
+                    (new-value
+                   (+ (shim-probability shim)
+                      prob-increment)))
+             
+             (setf (shim-probability shim)
+                   (min (max new-value 0.0)
+                        1.0))))))
+    (with-slots (left right) pane
+      (let ((correct (= answer
+                        (* left right))))
+        (cond
+         (correct
+          (change-prob left right -100))
+         (t
+          (change-prob left right 0.5)
+          (change-prob (1- left) right 0.25)
+          (change-prob (1+ left) right 0.25)
+          (change-prob left (1- right) 0.25)
+          (change-prob left (1+ right) 0.25)))
+        
+        (gp:invalidate-rectangle pane)))))
+
+(defvar *current-shim* nil)
+
+
+(defun get-next-question (pane)
+  (loop with value = 0.0
+        for shim across (make-array 81 :displaced-to (shims pane))
+        collect (incf value
+                      (shim-probability shim)) into values
+        finally (return
+                 (loop with max = (car (last values))
+                       with rand = (random max)
+                       for idx upfrom 0
+                       for value in values
+                       when (<= rand value)
+                       do (return (let* ((offset idx)
+                                         (new-left (1+ (truncate offset 9)))
+                                         (new-right (1+ (rem offset 9))))
+                                    (setf *current-shim*
+                                          (aref (shims pane)
+                                                (1- new-left)
+                                                (1- new-right)))
+                                    (log:info "New question was selected"
+                                              new-left new-right *current-shim*
+                                              rand
+                                              value)
+                                    (values
+                                     new-left
+                                     new-right)))))))
 
 
 (defun set-question (pane new-left new-right)
@@ -199,6 +265,7 @@
       (setf (capi:static-layout-child-position column-highlighter)
             (values
              (+ (picture-x pane)
+                (truncate (shim-gap pane) 2)
                 (* (+ (shim-size pane)
                       (shim-gap pane))
                    (1- left)))
@@ -210,6 +277,7 @@
             (values
              x
              (+ (picture-y pane)
+                (truncate (shim-gap pane) 2)
                 (* (+ (shim-size pane)
                       (shim-gap pane))
                    (1- right))))))))

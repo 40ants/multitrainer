@@ -12,10 +12,8 @@
 (defun on-enter (answer app)
   (let ((answer (parse-integer answer :junk-allowed t)))
     (when answer
-      (multiplication/results::update-results
+      (multiplication/results::give-answer
        (results-pane app)
-       *left*
-       *right*
        answer)
       (show-next-question app))))
 
@@ -77,26 +75,27 @@
 
 
 (defun show-next-question (app)
-  (setf *left* (1+ (random 9))
-        *right* (1+ (random 9)))
-
-  (multiplication/results::set-question
-   (results-pane app)
-   *left* *right*)
- 
-  (capi:apply-in-pane-process
+  (multiple-value-bind (new-left new-right)
+      (multiplication/results::get-next-question (results-pane app))
+    
+    (multiplication/results::set-question
+     (results-pane app)
+     new-left
+     new-right)
+    
+    (capi:apply-in-pane-process
      (question app)
      #'(setf capi:title-pane-text)
      (format nil "~A * ~A = "
-             *left*
-             *right*)
+             new-left
+             new-right)
      (question app))
 
-  (capi:apply-in-pane-process
-   (answer app)
-   #'(setf capi:text-input-pane-text)
-   ""
-   (answer app)))
+    (capi:apply-in-pane-process
+     (answer app)
+     #'(setf capi:text-input-pane-text)
+     ""
+     (answer app))))
 
 
 (defvar *app* nil)
