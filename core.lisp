@@ -1,5 +1,7 @@
 (defpackage multiplication/core
   (:use :cl)
+  (:import-from #:multiplication/sound
+                #:init-sounds)
   (:import-from #:multiplication/results))
 (in-package multiplication/core)
 
@@ -116,6 +118,7 @@
   (let ((app (make-instance 'multiplication)))
     (setf *app* app)
     (capi:display app)
+    (init-sounds)
     ;(update-results (results-pane app) 1 1 1)
     (show-next-question app))
 

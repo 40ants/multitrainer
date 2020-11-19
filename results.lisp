@@ -1,6 +1,8 @@
 (defpackage multiplication/results
   (:use :cl)
-  (:import-from #:multiplication/helping-grid))
+  (:import-from #:multiplication/helping-grid)
+  (:import-from #:multiplication/sound
+   #:play))
 (in-package multiplication/results)
 
 
@@ -18,9 +20,10 @@
             (shim-probability shim))))
 
 (defun get-color (shim)
-  (color:make-rgb 0.0
-                  0.0
-                  (shim-probability shim)))
+  (let ((prob (shim-probability shim)))
+    (color:make-rgb 0.0
+                    (* prob 0.6)
+                    prob)))
 
 (defun draw-shim (pane self x y width height)
   (when (> (shim-probability self) 0.0)
@@ -218,13 +221,15 @@
                         (* left right))))
         (cond
          (correct
-          (change-prob left right -100))
+          (change-prob left right -100)
+          (play :mur))
          (t
           (change-prob left right 0.5)
           (change-prob (1- left) right 0.25)
           (change-prob (1+ left) right 0.25)
           (change-prob left (1- right) 0.25)
-          (change-prob left (1+ right) 0.25)))
+          (change-prob left (1+ right) 0.25)
+          (play :meo)))
         
         (gp:invalidate-rectangle pane)))))
 
