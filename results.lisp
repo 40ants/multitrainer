@@ -241,7 +241,8 @@
   (loop with value = 0.0
         for shim across (make-array 81 :displaced-to (shims pane))
         collect (incf value
-                      (shim-probability shim)) into values
+                      (* (shim-probability shim)
+                         (shim-probability shim))) into values
         finally (return
                  (loop with max = (car (last values))
                        with rand = (random max)
