@@ -43,13 +43,37 @@
    (question-mark
     capi:title-pane
     :text "?"
-    :font (make-font)
+    :font (multiplication/font:make-big-font)
+    )
+   (start-game-button
+    capi:button
+;;    :visible-min-height 200
+    :visible-max-height nil
+    :text "Start"
+;    :font (multiplication/font:make-big-font)
+    :callback (lambda (_ app)
+                (declare (ignore _))
+                (start-game app))
     ))
   (:layouts
-   (main-layout
+   (start-layout
+    capi:row-layout
+    '(nil start-game-button nil)
+    :reader start-layout
+    )
+   (game-layout
     capi:column-layout
     '(results
       question-row)
+    :reader game-layout
+    )
+   (main-layout
+    capi:switchable-layout
+    '(start-layout
+      game-layout)
+    :reader main-layout
+    :visible-child 'start-layout
+    :combine-child-constraints t
     )
    (question-row
     capi:row-layout
@@ -61,6 +85,7 @@
     ))
   (:default-initargs
    :title "Multiplication Trainer"
+   :layout 'main-layout
    ))
 
 
@@ -74,6 +99,18 @@
 (defvar *left*)
 
 (defvar *right*)
+
+
+(defun start-game (app)
+  (let* ((new-screen (game-layout app))
+         (main (main-layout app))
+         (old (capi:switchable-layout-visible-child main)))
+    (capi:apply-in-pane-process
+     main
+     #'(setf capi:switchable-layout-visible-child)
+     new-screen main)
+    (format t "main: ~A, new: ~A~%, old: ~A"
+            main new-screen old)))
 
 
 (defun show-next-question (app)
@@ -125,4 +162,43 @@
 ;;;   (unless *update-thread*
 ;;;     (bt:make-thread #'redraw-results-for-debug
 ;;;                     :name "App Results Debug Updater"))
+  )
+
+
+(defun test1 ()
+  (capi:contain 
+   (make-instance 
+    'capi:grid-layout 
+    :description
+    (list
+     nil nil nil
+     nil
+     (make-instance 'capi:button :text "Push me!"
+;                    :visible-max-width t
+                    )
+
+     nil
+     nil nil nil)
+    :columns 3
+    :x-adjust :center
+    :y-adjust :center
+    )
+   :height 150 :width 150 :title "Resize Me")
+  )
+
+
+(defun test ()
+  (capi:contain 
+   (make-instance 
+    'capi:row-layout 
+    :description
+    (list
+     nil
+     (make-instance 'capi:button :text "Push me!"
+                    :visible-max-height nil
+                    )
+     nil
+)
+    )
+   :height 150 :width 150 :title "Resize Me")
   )

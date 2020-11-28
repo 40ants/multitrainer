@@ -1,18 +1,21 @@
 (defpackage multiplication/sound
   (:use :cl)
   (:export #:init-sounds
-           #:play))
+           #:play
+           #:play-random))
 (in-package multiplication/sound)
 
 
-(defvar *data*
+(defparameter *data*
   (list
-   :meo (capi:read-sound-file "sounds/meo.mp3")
-   :mur (capi:read-sound-file "sounds/mur.wav")
+   :meow1 (capi:read-sound-file "sounds/meow1.wav")
+   :meow2 (capi:read-sound-file "sounds/meow2.wav")
+   :purring (capi:read-sound-file "sounds/purring.wav")
+   :applause (capi:read-sound-file "sounds/applause.wav")
    ))
 
 
-(defvar *sounds* nil)
+(defparameter *sounds* nil)
 
 (defun init-sounds ()
   (unless *sounds*
@@ -26,3 +29,24 @@
     (when sound
       (capi:stop-sound sound)
       (capi:play-sound sound))))
+
+
+(defun play-random (sound-name-prefix)
+  (when (keywordp sound-name-prefix)
+    (setf sound-name-prefix
+          (symbol-name sound-name-prefix)))
+
+  (loop for name in *sounds* by #'cddr
+        for name-prefix = (subseq (symbol-name name)
+                                  0
+                                  (min (length sound-name-prefix)
+                                       (length (symbol-name name))))
+        when (string-equal name-prefix
+                           sound-name-prefix)
+        collect name into sounds
+        finally (when sounds
+                  (play (elt sounds
+                             (random (length sounds)))))))
+        
+  
+  

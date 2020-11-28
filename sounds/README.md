@@ -1,4 +1,6 @@
 Sources:
 
-* [meo.mp3](https://wav-library.net/sounds/cats/zvuk_koshachego_mjau_mp3_skachat/190-1-0-16300)
-* [mur.wav](https://wav-library.net/sounds/cats/koshka_urchit_ot_udovolstvija_zvuk_wav/190-1-0-14754)
+* [applause.wav](https://freesound.org/people/modestos1994/sounds/403061/)
+* [meow1.wav](https://freesound.org/people/steffcaffrey/sounds/479272/)
+* [meow2.wav](https://freesound.org/people/Mafon2/sounds/436541/)
+* [purring.wav](https://freesound.org/people/Kiyoshiakira/sounds/436766/)

@@ -2,7 +2,8 @@
   (:use :cl)
   (:import-from #:multiplication/helping-grid)
   (:import-from #:multiplication/sound
-   #:play))
+   #:play
+   #:play-random))
 (in-package multiplication/results)
 
 
@@ -222,14 +223,14 @@
         (cond
          (correct
           (change-prob left right -100)
-          (play :mur))
+          (play-random :purring))
          (t
           (change-prob left right 0.5)
           (change-prob (1- left) right 0.25)
           (change-prob (1+ left) right 0.25)
           (change-prob left (1- right) 0.25)
           (change-prob left (1+ right) 0.25)
-          (play :meo)))
+          (play-random :meow)))
         
         (gp:invalidate-rectangle pane)))))
 
@@ -296,19 +297,20 @@
                    (* duration
                       internal-time-units-per-second))))
     (lambda ()
-      (let* ((now (get-internal-real-time))
-             (new-value (+ from-value
-                           (* (- to-value from-value)
-                              (/ (- now started-at)
+      (ignore-errors
+        (let* ((now (get-internal-real-time))
+               (new-value (+ from-value
+                             (* (- to-value from-value)
+                                (/ (- now started-at)
                                  (- until started-at))))))
-        (cond
-         ((<= now until)
-          (funcall set-func new-value)
-          nil)
-         (t (funcall set-func to-value)
-            ;; Signal to remove transition
-            ;; from the queue
-            t))))))
+          (cond
+           ((<= now until)
+            (funcall set-func new-value)
+            nil)
+           (t (funcall set-func to-value)
+              ;; Signal to remove transition
+              ;; from the queue
+              t)))))))
 
 (defun change-x (obj new-x &optional (duration *default-duration*))
   (make-transition (x-position obj)
