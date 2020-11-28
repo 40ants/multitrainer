@@ -2,7 +2,10 @@
   (:use :cl)
   (:import-from #:multiplication/sound
                 #:init-sounds)
-  (:import-from #:multiplication/results))
+  (:import-from #:multiplication/results)
+  (:import-from #:multiplication/timer)
+
+  )
 (in-package multiplication/core)
 
 
@@ -23,11 +26,14 @@
 (capi:define-interface multiplication ()
   ()
   (:panes
+   (clock
+    multiplication/timer:timer-pane
+    :font (multiplication/font:make-big-font)
+    :reader clock)
    (question
     capi:title-pane
     :reader question
-    :font (multiplication/font:make-big-font)
-    )
+    :font (multiplication/font:make-big-font))
    (answer
     capi:text-input-pane
     :font (multiplication/font:make-big-font)
@@ -61,9 +67,13 @@
     '(nil start-game-button nil)
     :reader start-layout
     )
+   (clock-row
+    capi:row-layout
+    '(nil clock nil))
    (game-layout
     capi:column-layout
-    '(results
+    '(clock-row
+      results
       question-row)
     :reader game-layout
     )
@@ -96,15 +106,19 @@
 ;;;     (find-app (capi:element-parent element))))
 
 
-(defvar *left*)
+;;(defvar *left*)
 
-(defvar *right*)
+;;(defvar *right*)
 
 
 (defun start-game (app)
   (let* ((new-screen (game-layout app))
          (main (main-layout app))
          (old (capi:switchable-layout-visible-child main)))
+    
+    (multiplication/timer:reset
+     (clock app))
+    
     (capi:apply-in-pane-process
      main
      #'(setf capi:switchable-layout-visible-child)
