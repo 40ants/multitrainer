@@ -2,7 +2,8 @@
   (:use :cl)
   (:import-from #:local-time)
   (:export #:timer-pane
-           #:reset)
+           #:reset
+           #:stop)
   )
 (in-package multiplication/timer)
 
@@ -10,6 +11,8 @@
 (defclass timer-pane (capi:title-pane)
   ((started-at :initform (local-time:now)
                :accessor started-at)
+   (running :initform nil
+            :accessor running)
    (timer-thread :initform nil
                  :accessor timer-thread))
   (:default-initargs :text "00:00"))
@@ -29,11 +32,12 @@
 
 
 (defun update-time (pane)
-  (let ((since-start (local-time:timestamp-difference
+  (when (running pane)
+    (let ((since-start (local-time:timestamp-difference
                       (local-time:now)
                       (started-at pane))))
     (setf (capi:title-pane-text pane)
-          (format-time since-start)))
+          (format-time since-start))))
   
   (mp:schedule-timer-relative (timer-thread pane)
                               1.0))
@@ -49,5 +53,9 @@
 
 (defun reset (pane)
   (check-type pane timer-pane)
-  (setf (started-at pane)
-        (local-time:now)))
+  (setf (started-at pane) (local-time:now)
+        (running pane) t))
+
+
+(defun stop (pane)
+  (setf (running pane) nil))

@@ -3,7 +3,10 @@
   (:import-from #:multiplication/helping-grid)
   (:import-from #:multiplication/sound
    #:play
-   #:play-random))
+   #:play-random)
+  (:export #:give-answer
+   #:has-more-questions
+   #:reset-shims))
 (in-package multiplication/results)
 
 
@@ -108,6 +111,18 @@
     "images/dog-5723334_1920.jpg"))
 
 
+(defun reset-shims (pane)
+  (dotimes (column 9)
+    (dotimes (row 9)
+      (let* ((prob
+              (if (and (= column 0)
+                       (= row 0))
+                  0.5
+                0.0)))
+        (setf (shim-probability (aref (shims pane) column row))
+              prob)))))
+
+
 (defmethod initialize-instance :after ((pane results) &key &allow-other-keys)
   (let* ((picture-width 600)
          (picture-height 600)
@@ -122,16 +137,35 @@
          (shim-gap 2)
          (shim-size (/ (- picture-width (* shim-gap 8))
                           9))
+;;;          (shims (uiop/utility:while-collecting (collect)
+;;;                   (dotimes (column 9)
+;;;                     (dotimes (row 9)
+;;;                       (let* ((prob
+;;;                               (+ 0.2
+;;;                                  (* 0.9
+;;;                                     (/ (expt (- 81 (* column row))
+;;;                                              3)
+;;;                                        (expt 81
+;;;                                              3)))))
+;;;                              (shim (make-instance 'shim
+;;;                                                   :probability prob
+;;;                                                   :x (+ picture-x
+;;;                                                        (* column (+ shim-size shim-gap)))
+;;;                                                   :y (+ picture-y
+;;;                                                         (* row (+ shim-size shim-gap)))
+;;;                                                   :width shim-size
+;;;                                                   :height shim-size)))
+;;;                         (setf (aref (shims pane) column row)
+;;;                               shim)
+;;;                         (collect shim))))))
          (shims (uiop/utility:while-collecting (collect)
                   (dotimes (column 9)
                     (dotimes (row 9)
                       (let* ((prob
-                              (+ 0.2
-                                 (* 0.9
-                                    (/ (expt (- 81 (* column row))
-                                             3)
-                                       (expt 81
-                                             3)))))
+                              (if (and (= column 0)
+                                       (= row 0))
+                                  0.5
+                                0.0))
                              (shim (make-instance 'shim
                                                   :probability prob
                                                   :x (+ picture-x
@@ -233,6 +267,17 @@
           (play-random :meow)))
         
         (gp:invalidate-rectangle pane)))))
+
+
+(defun has-more-questions (pane)
+  (let ((shims (shims pane)))
+    (dotimes (j 9)
+      (dotimes (i 9)
+        (when (> (shim-probability
+                  (aref shims i j))
+                 0.0)
+          (return-from has-more-questions t))))))
+
 
 (defvar *current-shim* nil)
 
@@ -350,7 +395,7 @@
                                    (member tr to-remove))
                                  *trans*)))
   (mp:schedule-timer-relative *timer*
-                              *timer-interval*)))
+                              *timer-intervali*)))
 
 (defun start-timer ()
   (mp:schedule-timer-relative *timer*

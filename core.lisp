@@ -14,13 +14,31 @@
 
 (defparameter *num* 0)
 
+
+(defun on-end (app)
+  (multiplication/sound:play :applause)
+
+  (multiplication/timer:stop (clock app))
+  
+  (let ((new-screen (final-layout app))
+        (main (main-layout app)))
+
+    (capi:apply-in-pane-process
+     main
+     #'(setf capi:switchable-layout-visible-child)
+     new-screen main)))
+
+
 (defun on-enter (answer app)
-  (let ((answer (parse-integer answer :junk-allowed t)))
+  (let ((answer (parse-integer answer :junk-allowed t))
+        (results (results-pane app)))
     (when answer
-      (multiplication/results::give-answer
-       (results-pane app)
+      (multiplication/results:give-answer
+       results
        answer)
-      (show-next-question app))))
+      (if (multiplication/results:has-more-questions results)
+          (show-next-question app)
+        (on-end app)))))
 
 
 (capi:define-interface multiplication ()
@@ -67,6 +85,16 @@
     '(nil start-game-button nil)
     :reader start-layout
     )
+   (final-layout
+    capi:grid-layout
+    '(nil nil nil
+      nil clock nil
+      nil start-game-button nil
+      nil nil nil)
+    :columns 3
+    :x-adjust :center
+    :reader final-layout
+    )
    (clock-row
     capi:row-layout
     '(nil clock nil))
@@ -80,7 +108,8 @@
    (main-layout
     capi:switchable-layout
     '(start-layout
-      game-layout)
+      game-layout
+      final-layout)
     :reader main-layout
     :visible-child 'start-layout
     :combine-child-constraints t
@@ -113,18 +142,19 @@
 
 (defun start-game (app)
   (let* ((new-screen (game-layout app))
-         (main (main-layout app))
-         (old (capi:switchable-layout-visible-child main)))
+         (main (main-layout app)))
     
     (multiplication/timer:reset
      (clock app))
+
+    (multiplication/results:reset-shims
+      (results-pane app))
+    (show-next-question app)
     
     (capi:apply-in-pane-process
      main
      #'(setf capi:switchable-layout-visible-child)
-     new-screen main)
-    (format t "main: ~A, new: ~A~%, old: ~A"
-            main new-screen old)))
+     new-screen main)))
 
 
 (defun show-next-question (app)
