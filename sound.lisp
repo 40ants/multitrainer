@@ -7,12 +7,15 @@
 
 
 (defparameter *data*
-  (list
-   :meow1 (capi:read-sound-file "sounds/meow1.wav")
-   :meow2 (capi:read-sound-file "sounds/meow2.wav")
-   :purring (capi:read-sound-file "sounds/purring.wav")
-   :applause (capi:read-sound-file "sounds/applause.wav")
-   ))
+  (flet ((f (name)
+           (capi:read-sound-file
+            (asdf/system:system-relative-pathname :multiplication
+                                                  (format nil "sounds/~A.wav" name)))))
+    (list
+     :meow1 (f "meow1")
+     :meow2 (f "meow2")
+     :purring (f "purring")
+     :applause (f "applause"))))
 
 
 (defparameter *sounds* nil)

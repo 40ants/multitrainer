@@ -4,6 +4,7 @@
                 #:init-sounds)
   (:import-from #:multiplication/results)
   (:import-from #:multiplication/timer)
+  (:import-from #:multiplication/tips)
 
   )
 (in-package multiplication/core)
@@ -46,8 +47,12 @@
   (:panes
    (clock
     multiplication/timer:timer-pane
-    :font (multiplication/font:make-big-font)
+    :font (multiplication/font:make-small-font)
     :reader clock)
+   (tip
+    capi:title-pane
+;;     :font (multiplication/font:make-small-font)
+    :reader tip-pane)
    (question
     capi:title-pane
     :reader question
@@ -98,10 +103,15 @@
    (clock-row
     capi:row-layout
     '(nil clock nil))
+   (tip-row
+    capi:row-layout
+    '(nil "Hint:" tip nil))
+
    (game-layout
     capi:column-layout
     '(clock-row
       results
+      tip-row
       question-row)
     :reader game-layout
     )
@@ -165,6 +175,12 @@
      (results-pane app)
      new-left
      new-right)
+
+    (capi:apply-in-pane-process
+     (tip-pane app)
+     #'(setf capi:title-pane-text)
+     (multiplication/tips:make-tip new-left new-right)
+     (tip-pane app))
     
     (capi:apply-in-pane-process
      (question app)

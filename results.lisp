@@ -1,6 +1,8 @@
 (defpackage multiplication/results
   (:use :cl)
+  (:import-from #:log4cl)
   (:import-from #:multiplication/helping-grid)
+  (:import-from #:multiplication/font)
   (:import-from #:multiplication/sound
    #:play
    #:play-random)
@@ -33,7 +35,7 @@
   (when (> (shim-probability self) 0.0)
     (gp:draw-rectangle pane x y width height
                        :filled t
-                       :foreground (get-color self)))))
+                       :foreground (get-color self))))
 
 
 (defclass highligher (capi:drawn-pinboard-object)
@@ -43,6 +45,7 @@
 
 
 (defun draw-highligher (pane self x y width height)
+  (declare (ignorable self))
   (gp:draw-rectangle pane x y width height
                      :foreground :red
                      :thickness 4))
@@ -60,8 +63,6 @@
 
 (defun draw-picture (pane picture x y width height)
   (declare (ignorable pinboard x y width height))
-
-  (setf *debug* (list pane picture x y width height))
 
   (with-slots (image path) picture
       ;;;     (when image
@@ -106,19 +107,30 @@
 
 
 (defun choose-random-picture ()
-  (if (< (random 100) 50)
-      "images/pexels-pixabay-45201.jpg"
-    "images/dog-5723334_1920.jpg"))
+  (asdf/system:system-relative-pathname
+   :multiplication
+   (format nil "images/~A"
+           (if (< (random 100) 50)
+               "pexels-pixabay-45201.jpg"
+             "dog-5723334_1920.jpg"))))
 
 
 (defun reset-shims (pane)
   (dotimes (column 9)
     (dotimes (row 9)
-      (let* ((prob
-              (if (and (= column 0)
-                       (= row 0))
-                  0.5
-                0.0)))
+      (let* (
+;;;              (prob
+;;;               (if (and (= column 0)
+;;;                        (= row 0))
+;;;                   0.5
+;;;                 0.0))
+            (prob
+             (+ 0.2
+                (* 0.9
+                   (/ (expt (- 81 (* column row))
+                            3)
+                      (expt 81
+                            3))))))
         (setf (shim-probability (aref (shims pane) column row))
               prob)))))
 
@@ -137,46 +149,20 @@
          (shim-gap 2)
          (shim-size (/ (- picture-width (* shim-gap 8))
                           9))
-;;;          (shims (uiop/utility:while-collecting (collect)
-;;;                   (dotimes (column 9)
-;;;                     (dotimes (row 9)
-;;;                       (let* ((prob
-;;;                               (+ 0.2
-;;;                                  (* 0.9
-;;;                                     (/ (expt (- 81 (* column row))
-;;;                                              3)
-;;;                                        (expt 81
-;;;                                              3)))))
-;;;                              (shim (make-instance 'shim
-;;;                                                   :probability prob
-;;;                                                   :x (+ picture-x
-;;;                                                        (* column (+ shim-size shim-gap)))
-;;;                                                   :y (+ picture-y
-;;;                                                         (* row (+ shim-size shim-gap)))
-;;;                                                   :width shim-size
-;;;                                                   :height shim-size)))
-;;;                         (setf (aref (shims pane) column row)
-;;;                               shim)
-;;;                         (collect shim))))))
          (shims (uiop/utility:while-collecting (collect)
                   (dotimes (column 9)
                     (dotimes (row 9)
-                      (let* ((prob
-                              (if (and (= column 0)
-                                       (= row 0))
-                                  0.5
-                                0.0))
-                             (shim (make-instance 'shim
-                                                  :probability prob
-                                                  :x (+ picture-x
-                                                       (* column (+ shim-size shim-gap)))
-                                                  :y (+ picture-y
-                                                        (* row (+ shim-size shim-gap)))
-                                                  :width shim-size
-                                                  :height shim-size)))
+                      (let ((shim (make-instance 'shim
+                                           :x (+ picture-x
+                                                 (* column (+ shim-size shim-gap)))
+                                           :y (+ picture-y
+                                                 (* row (+ shim-size shim-gap)))
+                                           :width shim-size
+                                           :height shim-size)))
                         (setf (aref (shims pane) column row)
                               shim)
                         (collect shim))))))
+  
          (h-num-x (+ picture-x 15))
          (h-num-y (+ (- picture-y shim-size)
                      5))
@@ -395,7 +381,7 @@
                                    (member tr to-remove))
                                  *trans*)))
   (mp:schedule-timer-relative *timer*
-                              *timer-intervali*)))
+                              *timer-interval*))
 
 (defun start-timer ()
   (mp:schedule-timer-relative *timer*
