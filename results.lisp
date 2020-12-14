@@ -12,6 +12,13 @@
 (in-package multiplication/results)
 
 
+(defvar *images*
+  (loop for pathname in (directory (asdf/system:system-relative-pathname
+                                    :multiplication
+                                    "images/"))
+        collect (gp:read-external-image pathname)))
+
+
 (defclass shim (capi:drawn-pinboard-object)
   ((probability :initform (random 1.0)
                 :initarg :probability
@@ -53,8 +60,8 @@
 
 (defclass picture (capi:drawn-pinboard-object)
   ((image :initform nil)
-   (path :initform nil
-         :initarg :path))
+   (external-image :initform nil
+                   :initarg :external-image))
   (:default-initargs
    :width 600
    :height 600
@@ -64,13 +71,11 @@
 (defun draw-picture (pane picture x y width height)
   (declare (ignorable pinboard x y width height))
 
-  (with-slots (image path) picture
+  (with-slots (image external-image) picture
       ;;;     (when image
       ;;;       (gp:free-image picture image))
       (unless image
-        (let* ((external-image
-                (gp:read-external-image path))
-               (internal-image (gp:convert-external-image pane external-image)))
+        (let ((internal-image (gp:convert-external-image pane external-image)))
           
           (setf image
                 (gp:make-scaled-sub-image pane internal-image width height))
@@ -107,13 +112,8 @@
 
 
 (defun choose-random-picture ()
-  (asdf/system:system-relative-pathname
-   :multiplication
-   (format nil "images/~A"
-           (if (< (random 100) 50)
-               "pexels-pixabay-45201.jpg"
-             "dog-5723334_1920.jpg"))))
-
+  (elt *images*
+        (random (length *images*))))
 
 (defun reset-shims (pane)
   (dotimes (column 9)
@@ -141,7 +141,7 @@
          (picture-x 70)
          (picture-y 70)
          (picture  (make-instance 'picture
-                                  :path (choose-random-picture)
+                                  :external-image (choose-random-picture)
                                   :x picture-x
                                   :y picture-y
                                   :width picture-width

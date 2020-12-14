@@ -1,5 +1,7 @@
 (defpackage multiplication/tips
   (:use #:cl)
+  (:import-from #:multiplication/i18n
+   #:i18n)
   (:export #:make-tip))
 (in-package multiplication/tips)
 
@@ -24,7 +26,7 @@
 
 (defmethod print-object ((op trivial) stream)
   (declare (ignorable op))
-  (format stream "Тут всё просто!"))
+  (format stream (i18n "easy-tip")))
 
 
 (defmethod print-object ((op plus) stream)

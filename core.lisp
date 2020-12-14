@@ -3,10 +3,10 @@
   (:import-from #:multiplication/sound
                 #:init-sounds)
   (:import-from #:multiplication/results)
+  (:import-from #:multiplication/i18n
+   #:i18n)
   (:import-from #:multiplication/timer)
-  (:import-from #:multiplication/tips)
-
-  )
+  (:import-from #:multiplication/tips))
 (in-package multiplication/core)
 
 
@@ -15,6 +15,20 @@
 
 (defparameter *num* 0)
 
+
+(defclass i ()
+  ((key :initarg :key)))
+
+(defun i (key)
+  (make-instance 'i :key key))
+
+(defmethod print-object ((i i) stream)
+  (format stream
+          (i18n (slot-value i 'key))))
+
+(defmethod capi::ensure-pane-string ((pane t) (obj i))
+  (call-next-method pane
+                    (i18n (slot-value obj 'key))))
 
 (defun on-end (app)
   (multiplication/sound:play :applause)
@@ -78,7 +92,7 @@
     capi:button
 ;;    :visible-min-height 200
     :visible-max-height nil
-    :text "Start"
+    :text (i "start-button")
 ;    :font (multiplication/font:make-big-font)
     :callback (lambda (_ app)
                 (declare (ignore _))
@@ -105,7 +119,7 @@
     '(nil clock nil))
    (tip-row
     capi:row-layout
-    '(nil "Hint:" tip nil))
+    (list nil (i18n "tip-label") 'tip nil))
 
    (game-layout
     capi:column-layout
