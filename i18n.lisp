@@ -20,7 +20,7 @@
                   (objc:invoke "NSUserDefaults" "standardUserDefaults")
                   "objectForKey:" "AppleLanguages")
                  "objectAtIndex:" 0))))
-    ;; 2019-04-29и
+    ;; 2019-04-29
     ;; lang can be either on the short form "sv" or the long form "sv-SE".
     ;; It may have changed in later versions of macOS.
     ;; Anyway, make sure that this function returns on the short form "sv".

@@ -32,7 +32,8 @@
                 app-path
                 ;; Do not copy file associations...
                 :document-types nil
-                :application-icns "~/Documents/logo.icns"
+                :application-icns (asdf/system:system-relative-pathname :multiplication
+                                                                        "logo/logo.icns")
                 ;; ...or CFBundleIdentifier from the LispWorks bundle
                 :identifier "com.40ants.multitrainer"
                 :version "0.1.0"
