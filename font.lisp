@@ -16,8 +16,9 @@
                             :size *font-size*))
 
 
-(defun make-small-font ()
+(defun make-small-font (&optional (scale 1.0))
   (gp:make-font-description :family "courier"
                             :weight :medium
                             :slant :roman
-                            :size *small-font-size*))
+                            :size (* *small-font-size*
+                                     scale)))

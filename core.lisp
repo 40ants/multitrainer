@@ -149,7 +149,7 @@
   (:default-initargs
    :title "Multiplication Trainer"
    :layout 'main-layout
-   ))
+   :visible-max-width 700))
 
 
 ;;; (defun find-app (element)

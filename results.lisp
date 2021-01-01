@@ -25,7 +25,8 @@
                 :accessor shim-probability))
   (:default-initargs
    :display-callback 'draw-shim
-   :visible-min-width 40 :visible-min-height 40))
+   :visible-min-width 40
+   :visible-min-height 40))
 
 (defmethod print-object ((shim shim) stream)
   (print-unreadable-object (shim stream :type t)
@@ -63,39 +64,42 @@
    (external-image :initform nil
                    :initarg :external-image))
   (:default-initargs
-   :width 600
-   :height 600
+;;   :width 600
+  ;; :height 600
    :display-callback 'draw-picture))
 
 
 (defun draw-picture (pane picture x y width height)
-  (declare (ignorable pinboard x y width height))
-
+  (declare (ignorable pane))
   (with-slots (image external-image) picture
-      ;;;     (when image
-      ;;;       (gp:free-image picture image))
-      (unless image
-        (let ((internal-image (gp:convert-external-image pane external-image)))
-          
-          (setf image
-                (gp:make-scaled-sub-image pane internal-image width height))
-          (gp:invalidate-rectangle picture)
-          ))
-
+    ;;;     (when image
+    ;;;       (gp:free-image picture image))
+    
+    (unless image
+      (let ((internal-image (gp:convert-external-image pane external-image)))
+        
+        (setf image
+              (gp:make-scaled-sub-image pane internal-image width height))
+        (gp:invalidate-rectangle picture)))
+    
     (gp:draw-image pane
                    image
                    x y)))
-  
+
 
 (defclass results (capi:pinboard-layout)
   ((picture :accessor results-picture
-          :initform nil)
+            :initform nil)
    (shims :initform (make-array '(9 9) :initial-element nil)
           :reader shims)
    (shim-size :initform nil
               :accessor shim-size)
    (shim-gap :initform nil
              :accessor shim-gap)
+   (horizontal-numbers :initform nil
+                       :accessor horizontal-numbers)
+   (vertical-numbers :initform nil
+                     :accessor vertical-numbers)
    (picture-x :initform nil
               :accessor picture-x)
    (picture-y :initform nil
@@ -105,10 +109,11 @@
    (left :initform nil)
    (right :initform nil))
   (:default-initargs
-   :visible-min-width 700
-   :visible-min-height 700
+   :visible-min-width 500
+   :visible-min-height 500
    :visible-max-width 700
-   :visible-max-height 700))
+   :visible-max-height 700
+   :resize-callback 'resize-results))
 
 
 (defun choose-random-picture ()
@@ -168,24 +173,24 @@
                      5))
          (horizontal-numbers
           (loop for number below 9
-                collect(make-instance 'capi:title-pane
-                                      :text (format nil "~A"
-                                                    (1+ number))
-                                      :font (multiplication/font:make-small-font)
-                                      :x (+ h-num-x (* number (+ shim-size
-                                                                 shim-gap)))
-                                      :y h-num-y)))
+                collect (make-instance 'capi:title-pane
+                                       :text (format nil "~A"
+                                                     (1+ number))
+                                       :font (multiplication/font:make-small-font)
+                                       :x (+ h-num-x (* number (+ shim-size
+                                                                  shim-gap)))
+                                       :y h-num-y)))
          (v-num-x (- picture-x 35))
          (v-num-y picture-y)
          (vertical-numbers
           (loop for number below 9
-                collect(make-instance 'capi:title-pane
-                                      :text (format nil "~A"
-                                                    (1+ number))
-                                      :font (multiplication/font:make-small-font)
-                                      :y (+ v-num-y (* number (+ shim-size
-                                                                 shim-gap)))
-                                      :x v-num-x)))
+                collect (make-instance 'capi:title-pane
+                                       :text (format nil "~A"
+                                                     (1+ number))
+                                       :font (multiplication/font:make-small-font)
+                                       :y (+ v-num-y (* number (+ shim-size
+                                                                  shim-gap)))
+                                       :x v-num-x)))
          (helping-grid
           (make-instance 'multiplication/helping-grid:helping-grid
                          :width 700
@@ -212,7 +217,12 @@
                                            :width (+ picture-width
                                                      shim-size)
                                            :height shim-size))
-      (setf (capi:layout-description pane)
+      
+      (setf
+       (results-picture pane) picture
+       (horizontal-numbers pane) horizontal-numbers
+       (vertical-numbers pane) vertical-numbers
+       (capi:layout-description pane)
             (append
 ;;             (list helping-grid)
              (list picture)
@@ -221,6 +231,88 @@
              shims
              (list column-highlighter
                    row-highlighter))))))
+
+
+(defun resize-results (pane x y width height)
+  (declare (ignorable x y))
+  (let* ((size (min width height))
+         (picture-x (+ 70 (/ (- width size)
+                             2)))
+         (picture-y 70)
+         (right-padding 10)
+         (picture-size (- size (+ picture-y right-padding)))
+         (picture (results-picture pane))
+         (shim-gap 2)
+         (shim-size (/ (- picture-size (* shim-gap 8))
+                       9))
+         (font-scale (/ size 700))
+         (numbers-font (multiplication/font:make-small-font font-scale))
+         (h-num-x (+ picture-x 15))
+         (h-num-y (+ (- picture-y shim-size)
+                     5))
+         (v-num-x (- picture-x 35))
+         (v-num-y picture-y))
+
+
+   (setf
+    (x-position picture) picture-x
+    (y-position picture) picture-y
+    (picture-x pane) picture-x
+    (picture-y pane) picture-y
+    (capi:static-layout-child-size picture)
+    (values picture-size
+            picture-size)
+    ;; Reset the cat's image to make a new one
+    ;; which will fit desired square
+    (slot-value picture 'image)
+    nil
+    (shim-size pane) shim-size
+    (shim-gap pane) shim-gap)
+
+   (with-slots (column-highlighter row-highlighter)
+        pane
+     (setf
+      (x-position column-highlighter) (get-column-highlighter-x pane)
+      (y-position column-highlighter) (- picture-y
+                                         shim-size)
+      (capi:static-layout-child-size column-highlighter)
+           (values shim-size
+                   (+ picture-size
+                      shim-size)))
+     (setf
+      (x-position row-highlighter) (- picture-x
+                                      shim-size)
+      (y-position row-highlighter) (get-row-highlighter-y pane)
+      (capi:static-layout-child-size row-highlighter)
+           (values (+ picture-size
+                      shim-size)
+                   shim-size)))
+
+   (loop for num in (vertical-numbers pane)
+         for number below 9
+         do (setf (capi:simple-pane-font num) numbers-font
+                  (x-position num) v-num-x
+                  (y-position num) (+ v-num-y (* number (+ shim-size
+                                                           shim-gap)))))
+
+   (loop for num in (horizontal-numbers pane)
+         for number below 9
+         do (setf (capi:simple-pane-font num) numbers-font
+                  (x-position num) (+ h-num-x (* number (+ shim-size
+                                                           shim-gap)))
+                  (y-position num) h-num-y))
+   
+   (dotimes (column 9)
+     (dotimes (row 9)
+       (let ((shim (aref (shims pane) column row)))
+         (setf (x-position shim)
+               (+ picture-x
+                  (* column (+ shim-size shim-gap))))
+         (setf (y-position shim)
+               (+ picture-y
+                  (* row (+ shim-size shim-gap))))
+         (setf (capi:static-layout-child-size shim)
+               (values shim-size shim-size)))))))
 
 
 (defun give-answer (pane answer)
@@ -394,20 +486,28 @@
     (setf left new-left
           right new-right)
 
-
     (start-transition
      (change-x column-highlighter
-                    (+ (picture-x pane)
-                       (truncate (shim-gap pane) 2)
-                       (* (+ (shim-size pane)
-                             (shim-gap pane))
-                          (1- left)))
-                    0.3))
+               (get-column-highlighter-x pane)
+               0.3))
 
     (start-transition
      (change-y row-highlighter
-               (+ (picture-y pane)
-                  (truncate (shim-gap pane) 2)
-                  (* (+ (shim-size pane)
-                        (shim-gap pane))
-                     (1- right)))))))
+               (get-row-highlighter-y pane)
+               0.3))))
+
+
+(defun get-row-highlighter-y (pane)
+  (+ (picture-y pane)
+     (truncate (shim-gap pane) 2)
+     (* (+ (shim-size pane)
+           (shim-gap pane))
+        (1- (slot-value pane 'right)))))
+
+
+(defun get-column-highlighter-x (pane)
+  (+ (picture-x pane)
+     (truncate (shim-gap pane) 2)
+     (* (+ (shim-size pane)
+           (shim-gap pane))
+        (1- (slot-value pane 'left)))))

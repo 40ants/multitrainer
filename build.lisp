@@ -23,7 +23,6 @@
 (setf system:*file-encoding-detection-algorithm*
       '(force-utf-8-file-encoding))
 
-
 (asdf:load-system :multiplication/core)
 
 
@@ -38,7 +37,7 @@
                 :identifier "com.40ants.multitrainer"
                 :version "0.1.0"
                 )))
-
+  
   (deliver 'multiplication/core::start 
            bundle
            ;; level of compression
