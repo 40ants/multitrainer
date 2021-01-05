@@ -56,8 +56,68 @@
         (on-end app)))))
 
 
+(defparameter *version*
+  (asdf/component:component-version
+   (asdf/system:find-system :multiplication)))
+
+
+(capi:define-interface about ()
+  ()
+  
+  (:panes
+   (text
+    capi:display-pane
+    :text "Multiplication Trainer")
+   (version
+    capi:display-pane
+    :text *version*)
+   (link
+    capi:display-pane
+    :text
+    "You can find more info or report about bugs at:
+
+https://github.com/40ants/lw-multiplication"))
+  
+  (:layouts
+   (title-row
+    capi:row-layout
+    '(nil text nil))
+   (version-row
+    capi:row-layout
+    '(nil version nil))
+   (repo-row
+    capi:row-layout
+    '(nil link nil))
+   (main
+    capi:column-layout
+    '(title-row
+      version-row
+      nil
+      repo-row
+      nil)))
+  (:default-initargs
+   :title "About"
+   :layout 'main
+   :visible-min-width 400
+   :visible-max-width 400
+   :visible-min-height 300
+   :visible-max-height 300))
+
+(defun show-about-info (&rest args)
+  (declare (ignore args))
+  (capi:display
+   (make-instance 'about))
+  )
+
+
 (capi:define-interface multiplication ()
   ()
+  (:menu-bar activate-menu)
+  (:menus
+   (activate-menu
+    "Help"
+    (("About" :callback 'show-about-info
+      :callback-type nil))))
   (:panes
    (clock
     multiplication/timer:timer-pane
