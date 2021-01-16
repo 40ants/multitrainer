@@ -3,3 +3,5 @@
 /Multitrainer.app
 /*.zip
 *.pkg
+/.qlot/
+/docs/build/
