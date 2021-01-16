@@ -36,8 +36,8 @@
                                                                         "logo/logo.icns")
                 ;; ...or CFBundleIdentifier from the LispWorks bundle
                 :identifier "com.40ants.multitrainer"
-                :version "0.1.0"
-                )))
+                :version (asdf:component-version
+                          (asdf:find-system :multiplication)))))
   
   (deliver 'multiplication/core::start 
            bundle
