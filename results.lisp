@@ -113,6 +113,7 @@
    :visible-min-height 500
    :visible-max-width 700
    :visible-max-height 700
+   :draw-with-buffer t
    :resize-callback 'resize-results))
 
 
