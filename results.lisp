@@ -387,6 +387,7 @@
                                      new-left
                                      new-right)))))))
 
+(defparameter *trans-lock* (mp:make-lock))
 (defparameter *trans* nil)
 (defvar *timer* (mp:make-timer 'process-transitions))
 (defparameter *timer-interval* 0.001)
@@ -415,7 +416,7 @@
          new-y)))
 
 
-(defun make-transition (from-value to-value set-func &optional (duration *default-duration*))
+(defun make-transition (pane from-value to-value set-func &optional (duration *default-duration*))
   (let* ((started-at (get-internal-real-time))
          (until (+ started-at
                    (* duration
@@ -429,15 +430,19 @@
                                  (- until started-at))))))
           (cond
            ((<= now until)
-            (funcall set-func new-value)
+            (capi:apply-in-pane-process pane
+                                        set-func
+                                        new-value)
             nil)
            (t (funcall set-func to-value)
               ;; Signal to remove transition
               ;; from the queue
               t)))))))
 
-(defun change-x (obj new-x &optional (duration *default-duration*))
-  (make-transition (x-position obj)
+
+(defun change-x (pane obj new-x &optional (duration *default-duration*))
+  (make-transition pane
+                   (x-position obj)
                    new-x
                    (lambda (value)
                      (setf (x-position obj)
@@ -447,8 +452,9 @@
                    duration))
 
 
-(defun change-y (obj new-y &optional (duration *default-duration*))
-  (make-transition (y-position obj)
+(defun change-y (pane obj new-y &optional (duration *default-duration*))
+  (make-transition pane
+                   (y-position obj)
                    new-y
                    (lambda (value)
                      (setf (y-position obj)
@@ -458,12 +464,14 @@
                    duration))
 
 (defun start-transition (transition)
-  (push transition *trans*)
-  (start-timer))
+  (mp:with-lock (*trans-lock*)
+    (push transition *trans*)
+    (start-timer)))
 
 
 (defun process-transitions ()
-  (loop with to-remove = nil
+  (mp:with-lock (*trans-lock*)
+    (loop with to-remove = nil
         for transition in *trans*
         for remove-p = (funcall transition)
         if remove-p
@@ -472,8 +480,8 @@
                       (remove-if (lambda (tr)
                                    (member tr to-remove))
                                  *trans*)))
-  (mp:schedule-timer-relative *timer*
-                              *timer-interval*))
+    (mp:schedule-timer-relative *timer*
+                                *timer-interval*)))
 
 (defun start-timer ()
   (mp:schedule-timer-relative *timer*
@@ -487,14 +495,20 @@
           right new-right)
 
     (start-transition
-     (change-x column-highlighter
-               (get-column-highlighter-x pane)
-               0.3))
+     (change-x
+      pane
+      column-highlighter
+      (get-column-highlighter-x pane)
+      0.3))
 
     (start-transition
-     (change-y row-highlighter
-               (get-row-highlighter-y pane)
-               0.3))))
+     (change-y
+      pane
+      row-highlighter
+      (get-row-highlighter-y pane)
+      0.3))
+
+    ))
 
 
 (defun get-row-highlighter-y (pane)
